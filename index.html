@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkLog — Man-Hours Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #e8ff47;
+    --accent2: #47a8ff;
+    --accent3: #ff6b47;
+    --text: #f0f0f8;
+    --muted: #7070a0;
+    --success: #47ffa0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 24px;
+    background-image: radial-gradient(ellipse at 20% 0%, #1a1a2e 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, #0d1a0d 0%, transparent 60%);
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+  }
+  .logo span { color: var(--accent); }
+
+  .tagline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  /* METRICS GRID */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: var(--accent); }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent-color, var(--accent));
+  }
+
+  .metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent-color, var(--accent));
+  }
+
+  .metric-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* LAYOUT */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 800px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* FORM */
+  .form-row { margin-bottom: 16px; }
+
+  label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .timer-display {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 4px;
+    margin-bottom: 16px;
+  }
+
+  .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  button {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    flex: 1;
+  }
+  .btn-primary:hover { background: #fff; }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: default; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    flex: 1;
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--accent3);
+    border: 1px solid var(--accent3);
+  }
+  .btn-danger:hover { background: var(--accent3); color: #fff; }
+
+  .btn-running {
+    background: var(--accent3);
+    color: #fff;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+  /* SESSIONS LIST */
+  .session-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+  .session-item:hover { border-color: var(--border); }
+
+  .session-project {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+
+  .session-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .session-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent2);
+    text-align: right;
+  }
+
+  .session-saved {
+    font-size: 11px;
+    color: var(--success);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .delete-btn:hover { color: var(--accent3); }
+
+  /* PROJECT BREAKDOWN */
+  .project-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .project-row:last-child { border-bottom: none; }
+
+  .project-name { font-weight: 600; font-size: 14px; }
+
+  .project-stats {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .bar-wrap {
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  /* VELOCITY CHART */
+  .velocity-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 80px;
+    margin-top: 8px;
+  }
+  .vel-bar {
+    flex: 1;
+    background: linear-gradient(180deg, var(--accent2) 0%, #47a8ff44 100%);
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    transition: height 0.5s ease;
+    position: relative;
+    cursor: default;
+  }
+  .vel-bar:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    white-space: nowrap;
+    color: var(--text);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+
+  .peak-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .peak-cell {
+    height: 28px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    cursor: default;
+    transition: opacity 0.2s;
+  }
+
+  .new-project-input {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .new-project-input input { flex: 1; }
+  .new-project-input button { white-space: nowrap; padding: 10px 14px; }
+
+  .roi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(71,255,160,0.1);
+    border: 1px solid var(--success);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--success);
+    margin-top: 8px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    border: none;
+    background: transparent;
+  }
+  .tab.active { background: var(--surface); color: var(--text); }
+
+  .manual-form { display: none; }
+  .manual-form.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Work<span>Log</span></div>
+    <div class="tagline">Man-Hours Intelligence System</div>
+  </div>
+  <div class="roi-badge" id="globalRoi">🚀 ROI: —</div>
+</header>
+
+<!-- METRICS ROW -->
+<div class="metrics">
+  <div class="metric-card" style="--accent-color: var(--accent)">
+    <div class="metric-label">Total Hours Logged</div>
+    <div class="metric-value" id="m-totalHours">0.0</div>
+    <div class="metric-sub" id="m-totalSessions">0 sessions</div>
+  </div>
+  <div class="metric-card" style="--accent-color: var(--accent2)">
+    <div class="metric-label">Man-Hours Saved</div>
+    <div class="metric-value" id="m-hoursSaved">0.0</div>
+    <div class="metric-sub">vs manual estimate</div>
+  </div>
+  <div class="metric-card" style="--accent-color: var(--success)">
+    <div class="metric-label">Projects Active</div>
+    <div class="metric-value" id="m-projects">0</div>
+    <div class="metric-sub" id="m-projectList">—</div>
+  </div>
+  <div class="metric-card" style="--accent-color: var(--accent3)">
+    <div class="metric-label">Productivity Velocity</div>
+    <div class="metric-value" id="m-velocity">—</div>
+    <div class="metric-sub">output/hour index</div>
+  </div>
+  <div class="metric-card" style="--accent-color: #b47fff">
+    <div class="metric-label">Peak Hour</div>
+    <div class="metric-value" id="m-peakHour">—</div>
+    <div class="metric-sub">most productive time</div>
+  </div>
+</div>
+
+<div class="main-grid">
+
+  <!-- LEFT: LOG SESSION -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">Log Session</div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('timer')">⏱ Live Timer</button>
+        <button class="tab" onclick="switchTab('manual')">✏️ Manual Entry</button>
+      </div>
+
+      <div class="form-row">
+        <label>Project</label>
+        <select id="projectSelect">
+          <option value="">— Select project —</option>
+        </select>
+        <div class="new-project-input">
+          <input type="text" id="newProjectName" placeholder="New project name...">
+          <button class="btn-secondary" onclick="addProject()" style="flex:none">+ Add</button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Task / Description</label>
+        <textarea id="taskDesc" rows="2" placeholder="What did you work on?"></textarea>
+      </div>
+
+      <div class="form-row">
+        <label>Manual Hours Estimate (what it would've taken without your tools)</label>
+        <input type="number" id="manualEstimate" placeholder="e.g. 4.0" step="0.5" min="0">
+      </div>
+
+      <!-- TIMER MODE -->
+      <div id="timerMode">
+        <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <div class="btn-group">
+          <button class="btn-primary" id="startBtn" onclick="startTimer()">▶ Start Session</button>
+          <button class="btn-secondary" id="stopBtn" onclick="stopTimer()" disabled>⏹ Stop & Save</button>
+        </div>
+      </div>
+
+      <!-- MANUAL MODE -->
+      <div id="manualMode" class="manual-form">
+        <div class="row2">
+          <div class="form-row">
+            <label>Date</label>
+            <input type="date" id="manualDate">
+          </div>
+          <div class="form-row">
+            <label>Actual Hours Spent</label>
+            <input type="number" id="manualHours" placeholder="e.g. 1.5" step="0.25" min="0">
+          </div>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="saveManual()">Save Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: ANALYTICS -->
+  <div>
+
+    <!-- PROJECT BREAKDOWN -->
+    <div class="panel" style="margin-bottom:24px">
+      <div class="panel-title">Project Breakdown</div>
+      <div id="projectBreakdown">
+        <div class="empty-state"><div class="icon">📊</div>No sessions yet</div>
+      </div>
+    </div>
+
+    <!-- VELOCITY CHART -->
+    <div class="panel" style="margin-bottom:24px">
+      <div class="panel-title">Productivity Velocity (last 7 sessions)</div>
+      <div class="velocity-chart" id="velocityChart">
+        <div class="empty-state" style="width:100%"><div class="icon">📈</div>Log sessions to see velocity</div>
+      </div>
+    </div>
+
+    <!-- PEAK TIMES -->
+    <div class="panel">
+      <div class="panel-title">Peak Productivity Hours</div>
+      <div class="peak-grid" id="peakGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SESSION LOG -->
+<div class="panel" style="margin-top:24px">
+  <div class="panel-title">Session Log</div>
+  <div id="sessionLog">
+    <div class="empty-state"><div class="icon">🕐</div>Start your first session to see it here</div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let state = {
+  sessions: JSON.parse(localStorage.getItem('wl_sessions') || '[]'),
+  projects: JSON.parse(localStorage.getItem('wl_projects') || '["Personal","Work","Side Project"]'),
+  timerStart: null,
+  timerInterval: null,
+  running: false
+};
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+function init() {
+  // Set today's date
+  document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
+  renderProjects();
+  renderAll();
+}
+
+function save() {
+  localStorage.setItem('wl_sessions', JSON.stringify(state.sessions));
+  localStorage.setItem('wl_projects', JSON.stringify(state.projects));
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='timer')||(i===1&&tab==='manual')));
+  document.getElementById('timerMode').style.display = tab === 'timer' ? 'block' : 'none';
+  document.getElementById('manualMode').classList.toggle('visible', tab === 'manual');
+}
+
+// ── PROJECTS ───────────────────────────────────────────────────────────────
+function renderProjects() {
+  const sel = document.getElementById('projectSelect');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select project —</option>';
+  state.projects.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
+}
+
+function addProject() {
+  const inp = document.getElementById('newProjectName');
+  const name = inp.value.trim();
+  if (!name || state.projects.includes(name)) return;
+  state.projects.push(name);
+  save();
+  renderProjects();
+  document.getElementById('projectSelect').value = name;
+  inp.value = '';
+}
+
+// ── TIMER ──────────────────────────────────────────────────────────────────
+function startTimer() {
+  const proj = document.getElementById('projectSelect').value;
+  if (!proj) { alert('Please select a project first.'); return; }
+  state.timerStart = Date.now();
+  state.running = true;
+  document.getElementById('startBtn').className = 'btn-primary btn-running';
+  document.getElementById('startBtn').textContent = '● Recording...';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  state.timerInterval = setInterval(updateTimerDisplay, 1000);
+}
+
+function updateTimerDisplay() {
+  if (!state.timerStart) return;
+  const elapsed = Math.floor((Date.now() - state.timerStart) / 1000);
+  const h = String(Math.floor(elapsed/3600)).padStart(2,'0');
+  const m = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+  const s = String(elapsed%60).padStart(2,'0');
+  document.getElementById('timerDisplay').textContent = `${h}:${m}:${s}`;
+}
+
+function stopTimer() {
+  clearInterval(state.timerInterval);
+  const elapsed = (Date.now() - state.timerStart) / 3600000; // hours
+  const proj = document.getElementById('projectSelect').value;
+  const desc = document.getElementById('taskDesc').value.trim();
+  const manual = parseFloat(document.getElementById('manualEstimate').value) || elapsed * 2;
+
+  addSession({
+    project: proj,
+    description: desc || 'Session',
+    actualHours: Math.round(elapsed * 100) / 100,
+    manualEstimate: manual,
+    timestamp: state.timerStart,
+    date: new Date(state.timerStart).toISOString().split('T')[0]
+  });
+
+  // reset
+  state.timerStart = null; state.running = false;
+  document.getElementById('timerDisplay').textContent = '00:00:00';
+  document.getElementById('startBtn').className = 'btn-primary';
+  document.getElementById('startBtn').textContent = '▶ Start Session';
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('taskDesc').value = '';
+  document.getElementById('manualEstimate').value = '';
+}
+
+function saveManual() {
+  const proj = document.getElementById('projectSelect').value;
+  if (!proj) { alert('Please select a project.'); return; }
+  const hours = parseFloat(document.getElementById('manualHours').value);
+  if (!hours || hours <= 0) { alert('Enter actual hours spent.'); return; }
+  const desc = document.getElementById('taskDesc').value.trim();
+  const manual = parseFloat(document.getElementById('manualEstimate').value) || hours * 2;
+  const dateStr = document.getElementById('manualDate').value;
+  const ts = new Date(dateStr).getTime() || Date.now();
+
+  addSession({
+    project: proj,
+    description: desc || 'Manual entry',
+    actualHours: hours,
+    manualEstimate: manual,
+    timestamp: ts,
+    date: dateStr
+  });
+  document.getElementById('manualHours').value = '';
+  document.getElementById('taskDesc').value = '';
+  document.getElementById('manualEstimate').value = '';
+}
+
+function addSession(session) {
+  state.sessions.unshift(session);
+  save();
+  renderAll();
+}
+
+function deleteSession(idx) {
+  state.sessions.splice(idx, 1);
+  save();
+  renderAll();
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderMetrics();
+  renderSessionLog();
+  renderProjectBreakdown();
+  renderVelocity();
+  renderPeakHours();
+}
+
+function fmt(h) { return h.toFixed(1) + 'h'; }
+
+function renderMetrics() {
+  const sessions = state.sessions;
+  const totalHours = sessions.reduce((s,x) => s + x.actualHours, 0);
+  const totalSaved = sessions.reduce((s,x) => s + Math.max(0, x.manualEstimate - x.actualHours), 0);
+  const projects = [...new Set(sessions.map(s => s.project))];
+
+  document.getElementById('m-totalHours').textContent = fmt(totalHours);
+  document.getElementById('m-totalSessions').textContent = sessions.length + ' sessions';
+  document.getElementById('m-hoursSaved').textContent = fmt(totalSaved);
+  document.getElementById('m-projects').textContent = projects.length;
+  document.getElementById('m-projectList').textContent = projects.slice(0,2).join(', ') + (projects.length>2?'…':'') || '—';
+
+  // velocity = tasks per hour
+  const vel = totalHours > 0 ? (sessions.length / totalHours).toFixed(2) : '—';
+  document.getElementById('m-velocity').textContent = vel === '—' ? '—' : vel;
+
+  // ROI
+  if (totalHours > 0 && totalSaved > 0) {
+    const roi = ((totalSaved / totalHours) * 100).toFixed(0);
+    document.getElementById('globalRoi').textContent = `🚀 ROI: ${roi}% efficiency gain`;
+  }
+}
+
+function renderSessionLog() {
+  const el = document.getElementById('sessionLog');
+  if (!state.sessions.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🕐</div>Start your first session to see it here</div>';
+    return;
+  }
+  el.innerHTML = state.sessions.map((s, i) => {
+    const saved = Math.max(0, s.manualEstimate - s.actualHours);
+    const d = new Date(s.timestamp);
+    const timeStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    return `
+    <div class="session-item">
+      <div>
+        <div class="session-project">${s.project}</div>
+        <div class="session-meta">${s.description} · ${timeStr}</div>
+      </div>
+      <div>
+        <div class="session-time">${fmt(s.actualHours)}</div>
+        ${saved > 0 ? `<div class="session-saved">+${fmt(saved)} saved</div>` : ''}
+      </div>
+      <button class="delete-btn" onclick="deleteSession(${i})" title="Delete">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderProjectBreakdown() {
+  const el = document.getElementById('projectBreakdown');
+  if (!state.sessions.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📊</div>No sessions yet</div>';
+    return;
+  }
+  const byProject = {};
+  state.sessions.forEach(s => {
+    if (!byProject[s.project]) byProject[s.project] = { hours: 0, saved: 0, count: 0 };
+    byProject[s.project].hours += s.actualHours;
+    byProject[s.project].saved += Math.max(0, s.manualEstimate - s.actualHours);
+    byProject[s.project].count++;
+  });
+  const maxHours = Math.max(...Object.values(byProject).map(p => p.hours));
+  el.innerHTML = Object.entries(byProject).sort((a,b) => b[1].hours-a[1].hours).map(([name, data]) => `
+    <div class="project-row">
+      <div>
+        <div class="project-name">${name}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${(data.hours/maxHours*100).toFixed(0)}%"></div></div>
+      </div>
+      <div class="project-stats">
+        ${fmt(data.hours)} logged<br>
+        <span style="color:var(--success)">${fmt(data.saved)} saved</span><br>
+        ${data.count} sessions
+      </div>
+    </div>`).join('');
+}
+
+function renderVelocity() {
+  const el = document.getElementById('velocityChart');
+  const sessions = state.sessions.slice(0, 7).reverse();
+  if (!sessions.length) {
+    el.innerHTML = '<div class="empty-state" style="width:100%"><div class="icon">📈</div>Log sessions to see velocity</div>';
+    return;
+  }
+  const velocities = sessions.map(s => s.actualHours > 0 ? (s.manualEstimate / s.actualHours) : 1);
+  const maxV = Math.max(...velocities, 1);
+  el.innerHTML = velocities.map((v, i) => {
+    const pct = Math.max(5, (v/maxV)*100).toFixed(0);
+    const label = sessions[i].project.substring(0,6);
+    return `<div class="vel-bar" style="height:${pct}%" data-tip="${label}: ${v.toFixed(2)}x efficiency"></div>`;
+  }).join('');
+}
+
+function renderPeakHours() {
+  const el = document.getElementById('peakGrid');
+  const hourCounts = new Array(24).fill(0);
+  state.sessions.forEach(s => {
+    const h = new Date(s.timestamp).getHours();
+    hourCounts[h] += s.actualHours;
+  });
+  const max = Math.max(...hourCounts, 0.1);
+  // show 6am–6pm (12 cells) for readability
+  const startHour = 6;
+  el.innerHTML = Array.from({length:12}, (_,i) => {
+    const h = startHour + i;
+    const count = hourCounts[h];
+    const intensity = count / max;
+    const label = h < 12 ? `${h}a` : h === 12 ? '12p' : `${h-12}p`;
+    const bg = count > 0
+      ? `rgba(232,255,71,${0.15 + intensity*0.75})`
+      : 'var(--surface2)';
+    return `<div class="peak-cell" style="background:${bg}" title="${label}: ${count.toFixed(1)}h">${label}</div>`;
+  }).join('');
+
+  // peak hour metric
+  const peakH = hourCounts.indexOf(Math.max(...hourCounts));
+  if (Math.max(...hourCounts) > 0) {
+    const label = peakH < 12 ? `${peakH}AM` : peakH === 12 ? '12PM' : `${peakH-12}PM`;
+    document.getElementById('m-peakHour').textContent = label;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
