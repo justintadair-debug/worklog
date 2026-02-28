@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import time
@@ -50,6 +51,13 @@ def build_notify_message(project: str, description: str, task_type: str,
 API_KEY = "wl-justin-2026"  # hardcoded — change if needed
 
 app = FastAPI(title="WorkLog API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def require_key(x_wl_key: Optional[str] = Header(default=None)):
