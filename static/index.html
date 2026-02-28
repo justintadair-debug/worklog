@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkLog — Man-Hours Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root {
+    --bg:#0a0a0f; --surface:#12121a; --surface2:#1a1a26; --border:#2a2a3d;
+    --accent:#e8ff47; --accent2:#47a8ff; --accent3:#ff6b47;
+    --text:#f0f0f8; --muted:#7070a0; --success:#47ffa0;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Syne',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:32px 24px;
+    background-image:radial-gradient(ellipse at 20% 0%,#1a1a2e 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,#0d1a0d 0%,transparent 60%); }
+  header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:48px; flex-wrap:wrap; gap:16px; }
+  .logo { font-size:28px; font-weight:800; letter-spacing:-1px; }
+  .logo span { color:var(--accent); }
+  .tagline { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:2px; margin-top:4px; }
+  .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:40px; }
+  .metric-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; position:relative; overflow:hidden; }
+  .metric-card::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--accent-color,var(--accent)); }
+  .metric-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px; }
+  .metric-value { font-size:32px; font-weight:800; line-height:1; color:var(--accent-color,var(--accent)); }
+  .metric-sub { font-size:12px; color:var(--muted); margin-top:6px; font-family:'JetBrains Mono',monospace; }
+  .main-grid { display:grid; grid-template-columns:1fr 1.2fr; gap:24px; align-items:start; }
+  @media(max-width:800px){ .main-grid{grid-template-columns:1fr} }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:28px; }
+  .panel-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--muted); margin-bottom:24px; display:flex; align-items:center; gap:8px; }
+  .panel-title::after { content:''; flex:1; height:1px; background:var(--border); }
+  .form-row { margin-bottom:16px; }
+  label { display:block; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+  input,select,textarea { width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:14px; padding:10px 14px; border-radius:8px; outline:none; transition:border-color 0.2s; }
+  input:focus,select:focus,textarea:focus { border-color:var(--accent); }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .timer-display { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px; text-align:center;
+    font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:500; color:var(--accent); letter-spacing:4px; margin-bottom:16px; }
+  .btn-group { display:flex; gap:10px; flex-wrap:wrap; }
+  button { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; padding:10px 20px; border-radius:8px; border:none; cursor:pointer; transition:all 0.15s; }
+  .btn-primary { background:var(--accent); color:#000; flex:1; }
+  .btn-primary:hover { background:#fff; }
+  .btn-primary:disabled { background:var(--border); color:var(--muted); cursor:default; }
+  .btn-secondary { background:var(--surface2); color:var(--text); border:1px solid var(--border); flex:1; }
+  .btn-secondary:hover { border-color:var(--accent); }
+  .btn-running { background:var(--accent3)!important; color:#fff!important; animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+  .session-item { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px;
+    display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; }
+  .session-project { font-weight:700; font-size:14px; margin-bottom:2px; }
+  .session-meta { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); }
+  .session-time { font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:500; color:var(--accent2); text-align:right; }
+  .session-saved { font-size:11px; color:var(--success); font-family:'JetBrains Mono',monospace; text-align:right; }
+  .delete-btn { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:4px; }
+  .delete-btn:hover { color:var(--accent3); }
+  .project-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); }
+  .project-row:last-child { border-bottom:none; }
+  .project-name { font-weight:600; font-size:14px; }
+  .project-stats { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); text-align:right; }
+  .bar-wrap { background:var(--surface2); border-radius:4px; height:4px; margin-top:6px; }
+  .bar-fill { height:4px; border-radius:4px; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width 0.5s; }
+  .velocity-chart { display:flex; align-items:flex-end; gap:8px; height:80px; margin-top:8px; }
+  .vel-bar { flex:1; background:linear-gradient(180deg,var(--accent2) 0%,#47a8ff44 100%); border-radius:4px 4px 0 0; min-height:4px; position:relative; cursor:default; }
+  .vel-bar:hover::after { content:attr(data-tip); position:absolute; bottom:110%; left:50%; transform:translateX(-50%);
+    background:var(--surface2); border:1px solid var(--border); padding:4px 8px; border-radius:6px;
+    font-family:'JetBrains Mono',monospace; font-size:10px; white-space:nowrap; color:var(--text); }
+  .empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:13px; }
+  .empty-state .icon { font-size:36px; margin-bottom:12px; }
+  .peak-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:4px; margin-top:8px; }
+  .peak-cell { height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); }
+  .new-project-input { display:flex; gap:8px; margin-top:8px; }
+  .roi-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(71,255,160,0.1); border:1px solid var(--success);
+    border-radius:20px; padding:4px 12px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--success); }
+  .tabs { display:flex; gap:4px; margin-bottom:20px; background:var(--surface2); border-radius:10px; padding:4px; }
+  .tab { flex:1; padding:8px; text-align:center; font-size:12px; font-weight:700; border-radius:7px; cursor:pointer; color:var(--muted); border:none; background:transparent; }
+  .tab.active { background:var(--surface); color:var(--text); }
+  .manual-form { display:none; }
+  .manual-form.visible { display:block; }
+  .type-badge { display:inline-block; font-size:10px; font-family:'JetBrains Mono',monospace; padding:2px 6px; border-radius:4px; margin-left:6px; }
+  .type-manual { background:rgba(112,112,160,0.2); color:var(--muted); }
+  .type-diagnosis { background:rgba(71,168,255,0.15); color:var(--accent2); }
+  .type-scan { background:rgba(232,255,71,0.15); color:var(--accent); }
+  .type-agent { background:rgba(180,127,255,0.15); color:#b47fff; }
+  .type-timer { background:rgba(71,255,160,0.15); color:var(--success); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Work<span>Log</span></div>
+    <div class="tagline">Man-Hours Intelligence System</div>
+  </div>
+  <div class="roi-badge" id="globalRoi">🚀 ROI: —</div>
+</header>
+
+<div class="metrics">
+  <div class="metric-card" style="--accent-color:var(--accent)">
+    <div class="metric-label">Total Hours Logged</div>
+    <div class="metric-value" id="m-totalHours">0.0</div>
+    <div class="metric-sub" id="m-totalSessions">0 sessions</div>
+  </div>
+  <div class="metric-card" style="--accent-color:var(--accent2)">
+    <div class="metric-label">Man-Hours Saved</div>
+    <div class="metric-value" id="m-hoursSaved">0.0</div>
+    <div class="metric-sub">vs manual estimate</div>
+  </div>
+  <div class="metric-card" style="--accent-color:var(--success)">
+    <div class="metric-label">Projects Active</div>
+    <div class="metric-value" id="m-projects">0</div>
+    <div class="metric-sub" id="m-projectList">—</div>
+  </div>
+  <div class="metric-card" style="--accent-color:var(--accent3)">
+    <div class="metric-label">Auto-Logged Today</div>
+    <div class="metric-value" id="m-autoToday">0</div>
+    <div class="metric-sub">diagnosis + scan runs</div>
+  </div>
+</div>
+
+<div class="main-grid">
+  <div>
+    <div class="panel">
+      <div class="panel-title">Log Session</div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('timer')">⏱ Live Timer</button>
+        <button class="tab" onclick="switchTab('manual')">✏️ Manual Entry</button>
+      </div>
+
+      <div class="form-row">
+        <label>Project</label>
+        <select id="projectSelect">
+          <option value="BizPulse">BizPulse</option>
+          <option value="SEC Scanner">SEC Scanner</option>
+          <option value="WorkLog">WorkLog</option>
+          <option value="HEB Agent">HEB Agent</option>
+          <option value="Consulting">Consulting</option>
+          <option value="Personal">Personal</option>
+          <option value="Other">Other</option>
+        </select>
+        <div class="new-project-input">
+          <input type="text" id="newProjectName" placeholder="Add custom project...">
+          <button class="btn-secondary" onclick="addProject()" style="flex:none">+ Add</button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Task / Description</label>
+        <textarea id="taskDesc" rows="2" placeholder="What did you work on?"></textarea>
+      </div>
+
+      <div class="form-row">
+        <label>Manual Hours Estimate (what it would've taken without tools)</label>
+        <input type="number" id="manualEstimate" placeholder="e.g. 4.0" step="0.5" min="0">
+      </div>
+
+      <!-- TIMER -->
+      <div id="timerMode">
+        <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <div class="btn-group">
+          <button class="btn-primary" id="startBtn" onclick="startTimer()">▶ Start Session</button>
+          <button class="btn-secondary" id="stopBtn" onclick="stopTimer()" disabled>⏹ Stop & Save</button>
+        </div>
+      </div>
+
+      <!-- MANUAL -->
+      <div id="manualMode" class="manual-form">
+        <div class="row2">
+          <div class="form-row">
+            <label>Date</label>
+            <input type="date" id="manualDate">
+          </div>
+          <div class="form-row">
+            <label>Actual Hours Spent</label>
+            <input type="number" id="manualHours" placeholder="e.g. 1.5" step="0.25" min="0">
+          </div>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="saveManual()">Save Session</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel" style="margin-bottom:24px">
+      <div class="panel-title">Project Breakdown</div>
+      <div id="projectBreakdown"><div class="empty-state"><div class="icon">📊</div>No sessions yet</div></div>
+    </div>
+    <div class="panel" style="margin-bottom:24px">
+      <div class="panel-title">Velocity (last 7 sessions)</div>
+      <div class="velocity-chart" id="velocityChart">
+        <div class="empty-state" style="width:100%"><div class="icon">📈</div>Log sessions to see velocity</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Peak Productivity Hours</div>
+      <div class="peak-grid" id="peakGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" style="margin-top:24px">
+  <div class="panel-title">Session Log</div>
+  <div id="sessionLog"><div class="empty-state"><div class="icon">🕐</div>Start your first session to see it here</div></div>
+</div>
+
+<script>
+  const API_KEY = "wl-justin-2026";
+  const BASE = "";  // same origin
+
+  let sessions = [];
+  let timerStart = null;
+  let timerInterval = null;
+
+  const headers = { "Content-Type": "application/json", "X-WL-Key": API_KEY };
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  async function init() {
+    document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
+    await loadSessions();
+  }
+
+  async function loadSessions() {
+    try {
+      const res = await fetch(`${BASE}/api/sessions`, { headers });
+      if (!res.ok) return;
+      sessions = await res.json();
+      renderAll();
+    } catch(e) { console.error('Failed to load sessions', e); }
+  }
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t,i) =>
+      t.classList.toggle('active', (i===0&&tab==='timer')||(i===1&&tab==='manual')));
+    document.getElementById('timerMode').style.display = tab==='timer' ? 'block' : 'none';
+    document.getElementById('manualMode').classList.toggle('visible', tab==='manual');
+  }
+
+  // ── Projects ──────────────────────────────────────────────────────────────
+  function addProject() {
+    const inp = document.getElementById('newProjectName');
+    const name = inp.value.trim();
+    if (!name) return;
+    const sel = document.getElementById('projectSelect');
+    // check if already exists
+    for (let o of sel.options) if (o.value === name) { sel.value = name; inp.value=''; return; }
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = name;
+    sel.appendChild(opt);
+    sel.value = name;
+    inp.value = '';
+  }
+
+  // ── Timer ──────────────────────────────────────────────────────────────────
+  function startTimer() {
+    const proj = document.getElementById('projectSelect').value;
+    if (!proj) {
+      document.getElementById('projectSelect').style.borderColor = '#ff6b47';
+      return;
+    }
+    timerStart = Date.now();
+    document.getElementById('startBtn').className = 'btn-primary btn-running';
+    document.getElementById('startBtn').textContent = '● Recording...';
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    timerInterval = setInterval(updateTimerDisplay, 1000);
+  }
+
+  function updateTimerDisplay() {
+    const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+    const h = String(Math.floor(elapsed/3600)).padStart(2,'0');
+    const m = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+    const s = String(elapsed%60).padStart(2,'0');
+    document.getElementById('timerDisplay').textContent = `${h}:${m}:${s}`;
+  }
+
+  async function stopTimer() {
+    clearInterval(timerInterval);
+    const elapsed = (Date.now() - timerStart) / 3600000;
+    const proj = document.getElementById('projectSelect').value;
+    const desc = document.getElementById('taskDesc').value.trim();
+    const manual = parseFloat(document.getElementById('manualEstimate').value) || elapsed * 2;
+
+    await postSession({
+      project: proj,
+      description: desc || 'Timer session',
+      task_type: 'timer',
+      actual_hours: Math.round(elapsed * 100) / 100,
+      manual_estimate: manual,
+      timestamp: timerStart,
+    });
+
+    timerStart = null;
+    document.getElementById('timerDisplay').textContent = '00:00:00';
+    document.getElementById('startBtn').className = 'btn-primary';
+    document.getElementById('startBtn').textContent = '▶ Start Session';
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('taskDesc').value = '';
+    document.getElementById('manualEstimate').value = '';
+  }
+
+  async function saveManual() {
+    const proj = document.getElementById('projectSelect').value;
+    if (!proj) return;
+    const hours = parseFloat(document.getElementById('manualHours').value);
+    if (!hours || hours <= 0) return;
+    const desc = document.getElementById('taskDesc').value.trim();
+    const manual = parseFloat(document.getElementById('manualEstimate').value) || hours * 2;
+    const dateStr = document.getElementById('manualDate').value;
+
+    await postSession({
+      project: proj,
+      description: desc || 'Manual entry',
+      task_type: 'manual',
+      actual_hours: hours,
+      manual_estimate: manual,
+      timestamp: new Date(dateStr).getTime() || Date.now(),
+      date: dateStr,
+    });
+
+    document.getElementById('manualHours').value = '';
+    document.getElementById('taskDesc').value = '';
+    document.getElementById('manualEstimate').value = '';
+  }
+
+  async function postSession(data) {
+    try {
+      const res = await fetch(`${BASE}/api/log`, { method:'POST', headers, body: JSON.stringify(data) });
+      if (res.ok) await loadSessions();
+    } catch(e) { console.error('Failed to save session', e); }
+  }
+
+  async function deleteSession(id) {
+    try {
+      await fetch(`${BASE}/api/sessions/${id}`, { method:'DELETE', headers });
+      await loadSessions();
+    } catch(e) { console.error('Failed to delete session', e); }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function renderAll() {
+    renderMetrics();
+    renderSessionLog();
+    renderProjectBreakdown();
+    renderVelocity();
+    renderPeakHours();
+  }
+
+  function fmt(h) { return parseFloat(h).toFixed(1) + 'h'; }
+
+  function typeBadge(t) {
+    const map = { timer:'timer', manual:'manual', diagnosis:'diagnosis', scan:'scan', agent:'agent' };
+    const cls = map[t] || 'manual';
+    return `<span class="type-badge type-${cls}">${cls}</span>`;
+  }
+
+  function renderMetrics() {
+    const total = sessions.reduce((s,x) => s + x.actual_hours, 0);
+    const saved = sessions.reduce((s,x) => s + Math.max(0,(x.manual_estimate||0) - x.actual_hours), 0);
+    const projects = [...new Set(sessions.map(s => s.project))];
+    const today = new Date().toISOString().split('T')[0];
+    const autoToday = sessions.filter(s => s.date === today && ['diagnosis','scan','agent'].includes(s.task_type)).length;
+
+    document.getElementById('m-totalHours').textContent = fmt(total);
+    document.getElementById('m-totalSessions').textContent = sessions.length + ' sessions';
+    document.getElementById('m-hoursSaved').textContent = fmt(saved);
+    document.getElementById('m-projects').textContent = projects.length;
+    document.getElementById('m-projectList').textContent = projects.slice(0,2).join(', ') + (projects.length>2?'…':'') || '—';
+    document.getElementById('m-autoToday').textContent = autoToday;
+
+    if (total > 0 && saved > 0) {
+      const roi = ((saved / total) * 100).toFixed(0);
+      document.getElementById('globalRoi').textContent = `🚀 ROI: ${roi}% efficiency gain`;
+    }
+  }
+
+  function renderSessionLog() {
+    const el = document.getElementById('sessionLog');
+    if (!sessions.length) { el.innerHTML = '<div class="empty-state"><div class="icon">🕐</div>Start your first session to see it here</div>'; return; }
+    el.innerHTML = sessions.slice(0,50).map(s => {
+      const saved = Math.max(0, (s.manual_estimate||0) - s.actual_hours);
+      const d = new Date(s.timestamp);
+      const timeStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      return `<div class="session-item">
+        <div>
+          <div class="session-project">${s.project}${typeBadge(s.task_type)}</div>
+          <div class="session-meta">${s.description || ''} · ${timeStr}</div>
+        </div>
+        <div>
+          <div class="session-time">${fmt(s.actual_hours)}</div>
+          ${saved > 0 ? `<div class="session-saved">+${fmt(saved)} saved</div>` : ''}
+        </div>
+        <button class="delete-btn" onclick="deleteSession(${s.id})" title="Delete">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  function renderProjectBreakdown() {
+    const el = document.getElementById('projectBreakdown');
+    if (!sessions.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📊</div>No sessions yet</div>'; return; }
+    const byProject = {};
+    sessions.forEach(s => {
+      if (!byProject[s.project]) byProject[s.project] = { hours:0, saved:0, count:0 };
+      byProject[s.project].hours += s.actual_hours;
+      byProject[s.project].saved += Math.max(0,(s.manual_estimate||0)-s.actual_hours);
+      byProject[s.project].count++;
+    });
+    const maxHours = Math.max(...Object.values(byProject).map(p=>p.hours));
+    el.innerHTML = Object.entries(byProject).sort((a,b)=>b[1].hours-a[1].hours).map(([name,data]) =>
+      `<div class="project-row">
+        <div>
+          <div class="project-name">${name}</div>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${(data.hours/maxHours*100).toFixed(0)}%"></div></div>
+        </div>
+        <div class="project-stats">${fmt(data.hours)} logged<br><span style="color:var(--success)">${fmt(data.saved)} saved</span><br>${data.count} sessions</div>
+      </div>`).join('');
+  }
+
+  function renderVelocity() {
+    const el = document.getElementById('velocityChart');
+    const s = sessions.slice(0,7).reverse();
+    if (!s.length) { el.innerHTML = '<div class="empty-state" style="width:100%"><div class="icon">📈</div>Log sessions to see velocity</div>'; return; }
+    const velocities = s.map(x => x.actual_hours > 0 ? ((x.manual_estimate||x.actual_hours*2)/x.actual_hours) : 1);
+    const maxV = Math.max(...velocities, 1);
+    el.innerHTML = velocities.map((v,i) => {
+      const pct = Math.max(5,(v/maxV)*100).toFixed(0);
+      return `<div class="vel-bar" style="height:${pct}%" data-tip="${s[i].project}: ${v.toFixed(2)}x"></div>`;
+    }).join('');
+  }
+
+  function renderPeakHours() {
+    const el = document.getElementById('peakGrid');
+    const hourCounts = new Array(24).fill(0);
+    sessions.forEach(s => { const h = new Date(s.timestamp).getHours(); hourCounts[h] += s.actual_hours; });
+    const max = Math.max(...hourCounts, 0.1);
+    el.innerHTML = Array.from({length:12},(_,i) => {
+      const h = 6+i, count = hourCounts[h], intensity = count/max;
+      const label = h<12?`${h}a`:h===12?'12p':`${h-12}p`;
+      const bg = count>0?`rgba(232,255,71,${0.15+intensity*0.75})`:'var(--surface2)';
+      return `<div class="peak-cell" style="background:${bg}" title="${label}: ${count.toFixed(1)}h">${label}</div>`;
+    }).join('');
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -573,6 +573,11 @@ let state = {
 
 // ── INIT ───────────────────────────────────────────────────────────────────
 function init() {
+  // Auto-select first project so timer works immediately
+  setTimeout(() => {
+    const sel = document.getElementById("projectSelect");
+    if (sel && sel.options.length > 1) sel.selectedIndex = 1;
+  }, 100);
   // Set today's date
   document.getElementById('manualDate').value = new Date().toISOString().split('T')[0];
   renderProjects();
@@ -618,7 +623,7 @@ function addProject() {
 // ── TIMER ──────────────────────────────────────────────────────────────────
 function startTimer() {
   const proj = document.getElementById('projectSelect').value;
-  if (!proj) { alert('Please select a project first.'); return; }
+  if (!proj) { document.getElementById("projectSelect").style.borderColor = "#ff6b47"; document.getElementById("projectSelect").focus(); return; }
   state.timerStart = Date.now();
   state.running = true;
   document.getElementById('startBtn').className = 'btn-primary btn-running';
